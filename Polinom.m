@@ -3,7 +3,7 @@ function [ poli ] = Polinom( pow, x )
 %   Detailed explanation goes here
 
 if(pow==1)
-        m=size(x)
+        m=size(x);
         for i=1:m(1)
             poli(i,1)=1;
         end;

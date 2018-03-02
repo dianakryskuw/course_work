@@ -1,4 +1,4 @@
-function [ xmin, fmin, count ] = Interpolate( f, str ,np,startPoint, lb, ub)
+function [ xmin, fmin, count ] = Interpolate( f, str ,np,startPoint, lb, ub,df1,df2)
 %UNTITLED3 Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -6,20 +6,11 @@ narg=length(lb);
 for i=1:narg
 xl(i)=lb(i);
 xu(i)=ub(i);
-end
-
-% % if(narg==2)
-% %     Z1=xl(1):0.1:xu(1);
-% %     Z2=xl(2):0.1:xu(2);
-% %     [z1,z2]=meshgrid(Z1,Z2);
-% %     mesh(z1,z2,f(z1,z2));
-% % end;
-% f=str2func(fun);
-
+end;
 
 k=0.5;
-    r=startPoint;
-eps=0.001;
+r=startPoint;
+eps=0.00001;
 hold on
 x1=[];
 addx=[];
@@ -54,46 +45,75 @@ xx=transf(lower_bound,upper_bound,n);
 m=size(xx);
 
 for i=1:m(1)
-        myx=[xx(i,:)];
+    myx=[xx(i,:)];
     yy(i)=f(myx);
+    dfy1(i)=df1(myx);
+    dfy2(i)=df2(myx);
     fInvokeCount=fInvokeCount+1;
 end;
 
-if(l>0)
-j=1;
-addx=[];
-addy=[];
-for i=1:m(1)
-    if(Is_in_bound(lower_bound, upper_bound, x(i,:)))
-        for k=1:narg
-            addx(j,k)=x(i,k);
-        end;
-            addy(j)=y(i);
-            j=j+1;
-    end;
-end;
-end;
+%yy=[yy,dfy1,dfy2];
 
-if(~isempty(addx))
-x=[xx;addx];
-else
+ if(l>0)
+ j=1;
+ addx=[];
+ addy=[];
+ addd1=[];
+ addd2=[];
+ for i=1:m(1)
+     if(Is_in_bound(lower_bound, upper_bound, x(i,:)))
+        for k=1:narg
+             addx(j,k)=x(i,k);
+         end;
+             addy(j)=y(i);
+             addd1(j)=dfy1(i);
+             addd2(j)=dfy2(i);
+             j=j+1;
+     end;
+ end;
+ end;
+ 
+ if(~isempty(addx))
+ x=[xx;addx];
+ else
     x=xx;
-end;
-if(~isempty(addy))
-y=[yy';addy'];
-else
-    y=yy';
-end;
+ end;
+ if(~isempty(addy))
+ y=[yy';addy';dfy1';addd1';dfy2';addd2'];
+ else
+     y=[yy';dfy1';dfy2'];
+ end;
 
 
 if (strcmp(str,'lin')==1)
-    X=Polinom(1,x);
+    Xf=Polinom(1,x);
+    X=Xf;
+    for i=1:m(2)
+        dX(:,:,i)=derivativePolinom(1,x,i);
+        X=[X;dX(:,:,i)];
+    end;
 elseif (strcmp(str,'quad')==1)
-    X=Polinom(2,x)
+    Xf=Polinom(2,x);
+    X=Xf;
+    for i=1:m(2)
+        dX(:,:,i)=derivativePolinom(2,x,i);
+        X=[X;dX(:,:,i)];
+    end;
 elseif (strcmp(str,'cub')==1)
-    X=Polinom(3,x);
+    Xf=Polinom(3,x);
+    X=Xf;
+    for i=1:m(2)
+        dX(:,:,i)=derivativePolinom(4,x,i);
+        X=[X;dX(:,:,i)];
+    end;
 elseif (strcmp(str,'quar')==1)
-    X=Polinom(4,x);
+    Xf=Polinom(4,x);
+    X=Xf;
+    dX=[];
+    for i=1:m(2)
+        dX(:,:,i)=derivativePolinom(4,x,i);
+        X=[X;dX(:,:,i)];
+    end;
 end;
 
 
@@ -104,13 +124,13 @@ a=A\b;
 
 
 if (strcmp(str,'lin')==1)
-    phio=@(x)a.*Polinom(1,x);
+    phio=@(x)sum(a'.*Polinom(1,x));
 elseif (strcmp(str,'quad')==1)
     phio=@(x)sum(a'.*Polinom(2,x));
 elseif (strcmp(str,'cub')==1)
     phio=@(x)sum(a'.*Polinom(3,x));
 elseif (strcmp(str,'quar')==1)
-    phio=@(x)Polinom(4,x).*a;
+    phio=@(x)sum(a'.*Polinom(4,x));
 end;
 
 
@@ -138,7 +158,7 @@ disp('');
 disp('');
 xmin=r
 fmin=f(xmin)
-count=l
+count=fInvokeCount
 
 end
 
